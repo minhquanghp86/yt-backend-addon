@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MQ YouTube API</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #121212;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .container {
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .search-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 30px;
+    border: none;
+    font-size: 1.1rem;
+    outline: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    text-align: center;
+  }
+
+  button {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  .btn-search {
+    background-color: #1db954;
+    color: #fff;
+    min-width: 180px;
+  }
+
+  .btn-play {
+    background-color: #ff5722;
+    color: #fff;
+    min-width: 160px;
+  }
+
+  .btn-play-video {
+    background-color: #9c27b0;
+    color: #fff;
+    min-width: 180px;
+  }
+
+  .btn-copy {
+    background-color: #2196f3;
+    color: #fff;
+    min-width: 180px;
+  }
+
+  img.thumbnail {
+    width: 100%;
+    max-width: 480px;
+    border-radius: 16px;
+    margin: 16px auto;
+    display: block;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .status {
+    margin: 12px 0;
+    font-style: italic;
+    color: #bbbbbb;
+    min-height: 24px;
+  }
+
+  .info-box {
+    background: #1e1e1e;
+    border-radius: 12px;
+    padding: 12px;
+    margin: 12px auto;
+    max-width: 480px;
+    text-align: left;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  .info-box strong {
+    color: #ffffff;
+  }
+
+  audio, video {
+    width: 100%;
+    max-width: 480px;
+    margin: 16px auto;
+    border-radius: 12px;
+    background: #000;
+    display: block;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .copy-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .play-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>MQ YouTube API</h1>
+
+  <div class="search-container">
+    <input type="text" id="query" placeholder="Nhập tên bài hát hoặc video">
+    <button class="btn-search" onclick="searchAll()">Tìm kiếm</button>
+  </div>
+
+  <div class="status" id="status"></div>
+  <img id="thumbnail" class="thumbnail" style="display:none;">
+
+  <div id="infoBox" class="info-box" style="display:none;">
+    <p><strong id="title"></strong></p>
+    <p><strong>Ca sĩ/Channel:</strong> <span id="artist"></span></p>
+    <p><strong>Thời lượng:</strong> <span id="duration"></span></p>
+  </div>
+
+  <div class="controls-container">
+    <div class="copy-row">
+      <button class="btn-copy" id="copyAudioBtn" style="display:none;" onclick="copyAudio()">Copy Audio URL</button>
+      <button class="btn-copy" id="copyVideoBtn" style="display:none;" onclick="copyVideo()">Copy Video URL</button>
+    </div>
+    <div class="play-row">
+      <button class="btn-play" id="playAudioBtn" style="display:none;" onclick="toggleAudio()">Play Audio</button>
+      <button class="btn-play-video" id="playVideoBtn" style="display:none;" onclick="toggleVideo()">Play Video Proxy</button>
+    </div>
+  </div>
+
+  <audio id="audioPlayer" controls style="display:none;"></audio>
+  <video id="videoPlayer" controls style="display:none;"></video>
+</div>
+
+<script>
+let audioUrl = "";
+let videoUrl = "";
+let currentThumbnail = "";
+let isPlaying = false;
+let isVideoPlaying = false;
+
+const audioPlayer = document.getElementById('audioPlayer');
+const videoPlayer = document.getElementById('videoPlayer');
+const playBtn = document.getElementById('playAudioBtn');
+const playVideoBtn = document.getElementById('playVideoBtn');
+const infoBox = document.getElementById('infoBox');
+
+function setStatus(text) {
+  document.getElementById('status').innerText = text;
+}
+
+function updateUIWithResult(audioData, videoData) {
+  let success = false;
+  let errorMsg = "";
+  let displayTitle = "";
+  let displayArtist = "";
+  let displayDuration = "";
+
+  if (audioData && audioData.success) {
+    audioUrl = audioData.stream_url || "";
+    currentThumbnail = audioData.thumbnail;
+    displayTitle = audioData.title || "Không có tiêu đề";
+    displayArtist = audioData.artist || "Không xác định";
+    displayDuration = audioData.duration ? `${Math.floor(audioData.duration / 60)}:${(audioData.duration % 60).toString().padStart(2, '0')}` : "Live";
+    success = true;
+  } else if (audioData) {
+    errorMsg += "Audio: " + audioData.error + " | ";
+  }
+
+  if (videoData && videoData.success) {
+    videoUrl = videoData.video_url || "";
+    if (!currentThumbnail) currentThumbnail = videoData.thumbnail;
+    if (!displayTitle) displayTitle = videoData.title || "Không có tiêu đề";
+    if (!displayArtist) displayArtist = videoData.artist || "Không xác định";
+    if (!displayDuration) displayDuration = videoData.duration ? `${Math.floor(videoData.duration / 60)}:${(videoData.duration % 60).toString().padStart(2, '0')}` : "Live";
+    success = true;
+  } else if (videoData) {
+    errorMsg += "Video: " + videoData.error;
+  }
+
+  if (success) {
+    setStatus("Hoàn thành");
+
+    if (currentThumbnail) {
+      const thumb = document.getElementById('thumbnail');
+      thumb.src = currentThumbnail;
+      thumb.style.display = "block";
+    }
+
+    document.getElementById('title').textContent = displayTitle;
+    document.getElementById('artist').textContent = displayArtist;
+    document.getElementById('duration').textContent = displayDuration;
+    infoBox.style.display = "block";
+
+    if (audioUrl) {
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = "block";
+      playBtn.style.display = "inline-block";
+      document.getElementById('copyAudioBtn').style.display = "inline-block";
+    }
+    if (videoUrl) {
+      playVideoBtn.style.display = "inline-block";
+      document.getElementById('copyVideoBtn').style.display = "inline-block";
+    }
+  } else {
+    setStatus("❌ " + (errorMsg || "Không tìm thấy kết quả"));
+  }
+}
+
+async function searchAll() {
+  const query = document.getElementById('query').value.trim();
+  if (!query) {
+    setStatus("Vui lòng nhập từ khóa!");
+    return;
+  }
+
+  setStatus("Đang tìm kiếm...");
+
+  // Reset players
+  videoPlayer.style.display = "none";
+  videoPlayer.src = "";
+  audioPlayer.style.display = "none";
+
+  try {
+    const [audioResp, videoResp] = await Promise.all([
+      fetch("/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": "mqsmarthome" },
+        body: JSON.stringify({query})
+      }).then(r => r.json()).catch(() => ({success: false, error: "Lỗi kết nối audio"})),
+      fetch("/get_video_stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": "mqsmarthome" },
+        body: JSON.stringify({query})
+      }).then(r => r.json()).catch(() => ({success: false, error: "Lỗi kết nối video"}))
+    ]);
+
+    updateUIWithResult(audioResp, videoResp);
+
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Lỗi mạng hoặc server");
+  }
+}
+
+function toggleAudio() {
+  if (!audioUrl) return;
+
+  // Dừng video nếu đang phát
+  if (isVideoPlaying) {
+    videoPlayer.pause();
+    isVideoPlaying = false;
+    playVideoBtn.textContent = "Play Video Proxy";
+  }
+
+  // Hiện audio player, ẩn video player
+  audioPlayer.style.display = "block";
+  videoPlayer.style.display = "none";
+
+  if (isPlaying) {
+    audioPlayer.pause();
+    isPlaying = false;
+    playBtn.textContent = "Play Audio";
+  } else {
+    audioPlayer.play().catch(err => {
+      console.error("Play error:", err);
+      setStatus("Không thể phát audio (có thể link hết hạn)");
+    });
+    isPlaying = true;
+    playBtn.textContent = "Pause Audio";
+  }
+}
+
+function toggleVideo() {
+  if (!videoUrl) return;
+
+  // Dừng audio nếu đang phát
+  if (isPlaying) {
+    audioPlayer.pause();
+    isPlaying = false;
+    playBtn.textContent = "Play Audio";
+  }
+
+  if (isVideoPlaying) {
+    videoPlayer.pause();
+    isVideoPlaying = false;
+    playVideoBtn.textContent = "Play Video Proxy";
+    return;
+  }
+
+  // Ẩn audio player, hiện video player
+  audioPlayer.style.display = "none";
+  videoPlayer.style.display = "block";
+
+  setStatus("Đang tải video...");
+
+  // Reset video player
+  videoPlayer.src = "";
+  videoPlayer.load();
+
+  // Set video source và play
+  videoPlayer.src = videoUrl;
+  
+  videoPlayer.load();
+  
+  videoPlayer.play().then(() => {
+    isVideoPlaying = true;
+    playVideoBtn.textContent = "Pause Video";
+    setStatus("Đang phát video");
+  }).catch(err => {
+    console.error("Play error:", err);
+    setStatus("❌ Không thể phát video. Thử lại sau vài giây...");
+  });
+}
+
+// Event listeners
+audioPlayer.addEventListener('ended', () => {
+  isPlaying = false;
+  playBtn.textContent = "Play Audio";
+});
+
+videoPlayer.addEventListener('ended', () => {
+  isVideoPlaying = false;
+  playVideoBtn.textContent = "Play Video Proxy";
+});
+
+videoPlayer.addEventListener('pause', () => {
+  isVideoPlaying = false;
+  playVideoBtn.textContent = "Play Video Proxy";
+});
+
+videoPlayer.addEventListener('play', () => {
+  isVideoPlaying = true;
+  playVideoBtn.textContent = "Pause Video";
+});
+
+function copyAudio() {
+  if (!audioUrl) return;
+  // Thêm domain vào URL
+  const fullUrl = audioUrl.startsWith('http') ? audioUrl : window.location.origin + audioUrl;
+  navigator.clipboard.writeText(fullUrl)
+    .then(() => alert("Audio URL đã copy!\n" + fullUrl))
+    .catch(() => alert("Copy thất bại"));
+}
+
+function copyVideo() {
+  if (!videoUrl) return;
+  // Thêm domain vào URL
+  const fullUrl = videoUrl.startsWith('http') ? videoUrl : window.location.origin + videoUrl;
+  navigator.clipboard.writeText(fullUrl)
+    .then(() => alert("Video URL đã copy!\n" + fullUrl))
+    .catch(() => alert("Copy thất bại"));
+}
+
+// Enter key để search
+document.getElementById('query').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    searchAll();
+  }
+});
+</script>
+</body>
+</html>
