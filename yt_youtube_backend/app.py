@@ -13,6 +13,18 @@ PORT = int(os.getenv("PORT", 5000))
 
 app = Flask(__name__, static_folder="static")
 
+# Global state để track playback hiện tại
+playback_state = {
+    "state": "idle",  # idle, playing, paused
+    "title": "",
+    "artist": "",
+    "thumbnail": "",
+    "duration": 0,
+    "stream_url": "",
+    "video_url": "",
+    "position": 0  # vị trí hiện tại (giây)
+}
+
 # Simple API key auth
 def auth(req):
     if not API_KEY:
@@ -257,6 +269,17 @@ def search_video():
             "thumbnail": f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg",
             "artist": info.get("channel", ""),
         }
+        
+        # Update global state
+        playback_state["title"] = result["title"]
+        playback_state["artist"] = result["artist"]
+        playback_state["thumbnail"] = result["thumbnail"]
+        playback_state["duration"] = result["duration"]
+        playback_state["stream_url"] = result["stream_url"]
+        playback_state["video_url"] = result.get("video_url", "")
+        playback_state["state"] = "playing"
+        playback_state["position"] = 0
+        
         return jsonify(result)
 
     except Exception as e:
@@ -338,11 +361,22 @@ def get_video_stream():
                 "success": True,
                 "title": info.get("title"),
                 "duration": info.get("duration"),
+                "stream_url": stream_url or video_url,
                 "video_url": video_url,
-                "is_live": is_live,
                 "thumbnail": f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg",
                 "artist": info.get("channel", ""),
             }
+        
+            # Update global state
+            playback_state["title"] = result["title"]
+            playback_state["artist"] = result["artist"]
+            playback_state["thumbnail"] = result["thumbnail"]
+            playback_state["duration"] = result["duration"]
+            playback_state["stream_url"] = result["stream_url"]
+            playback_state["video_url"] = result.get("video_url", "")
+            playback_state["state"] = "playing"
+            playback_state["position"] = 0
+        
             return jsonify(result)
 
     except yt_dlp.utils.DownloadError as de:
@@ -360,6 +394,37 @@ def get_video_stream():
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+
+@app.route('/state', methods=['GET'])
+def get_state():
+    """Trả về trạng thái playback hiện tại"""
+    return jsonify(playback_state)
+
+
+@app.route('/control', methods=['POST'])
+def control_playback():
+    """Control playback: play, pause, stop"""
+    if not auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+    
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "").lower()
+    
+    if action == "play":
+        playback_state["state"] = "playing"
+    elif action == "pause":
+        playback_state["state"] = "paused"
+    elif action == "stop":
+        playback_state["state"] = "idle"
+        playback_state["title"] = ""
+        playback_state["artist"] = ""
+        playback_state["stream_url"] = ""
+    elif action == "seek":
+        playback_state["position"] = data.get("position", 0)
+    else:
+        return jsonify({"error": "invalid action"}), 400
+    
+    return jsonify({"success": True, "state": playback_state})
 
 
 if __name__ == "__main__":
