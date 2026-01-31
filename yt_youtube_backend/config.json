@@ -19,7 +19,6 @@
     "API_KEY": "str",
     "PORT": "int"
   },
-  "image": "ghcr.io/minhquanghp86/yt-backend-addon-{arch}",
   "ingress": true,
   "ingress_port": 5000,
   "panel_icon": "mdi:youtube"
