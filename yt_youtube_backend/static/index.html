@@ -185,12 +185,39 @@ let videoUrl = "";
 let currentThumbnail = "";
 let isPlaying = false;
 let isVideoPlaying = false;
+let API_KEY = ""; // Fetch từ /config, không hardcode
 
 const audioPlayer = document.getElementById('audioPlayer');
 const videoPlayer = document.getElementById('videoPlayer');
 const playBtn = document.getElementById('playAudioBtn');
 const playVideoBtn = document.getElementById('playVideoBtn');
 const infoBox = document.getElementById('infoBox');
+
+// Detect base URL — works cho cả direct access và ingress
+function getBaseUrl() {
+  const path = window.location.pathname;
+  // Nếu path là / hoặc /index.html → direct access
+  if (path === '/' || path === '/index.html') {
+    return '';
+  }
+  // Nếu có path (ingress) → trả về path minus trailing slash
+  return path.replace(/\/$/, '');
+}
+
+const BASE_URL = getBaseUrl();
+
+// Fetch API key từ backend khi page load
+async function initConfig() {
+  try {
+    const resp = await fetch(`${BASE_URL}/config`);
+    const data = await resp.json();
+    API_KEY = data.api_key || "";
+  } catch (e) {
+    console.error("Không thể fetch config:", e);
+    setStatus("⚠️ Không thể connect đến backend");
+  }
+}
+initConfig();
 
 function setStatus(text) {
   document.getElementById('status').innerText = text;
@@ -270,14 +297,14 @@ async function searchAll() {
 
   try {
     const [audioResp, videoResp] = await Promise.all([
-      fetch("/search", {
+      fetch(`${BASE_URL}/search`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": "mqsmarthome" },
+        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
         body: JSON.stringify({query})
       }).then(r => r.json()).catch(() => ({success: false, error: "Lỗi kết nối audio"})),
-      fetch("/get_video_stream", {
+      fetch(`${BASE_URL}/get_video_stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": "mqsmarthome" },
+        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
         body: JSON.stringify({query})
       }).then(r => r.json()).catch(() => ({success: false, error: "Lỗi kết nối video"}))
     ]);
