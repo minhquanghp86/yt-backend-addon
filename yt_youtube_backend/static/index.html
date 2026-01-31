@@ -231,7 +231,12 @@ function updateUIWithResult(audioData, videoData) {
   let displayDuration = "";
 
   if (audioData && audioData.success) {
-    audioUrl = audioData.stream_url || "";
+    // Rewrite proxy URL để work với ingress
+    let streamUrl = audioData.stream_url || "";
+    if (streamUrl.startsWith('/proxy')) {
+      streamUrl = BASE_URL + streamUrl;
+    }
+    audioUrl = streamUrl;
     currentThumbnail = audioData.thumbnail;
     displayTitle = audioData.title || "Không có tiêu đề";
     displayArtist = audioData.artist || "Không xác định";
@@ -242,7 +247,12 @@ function updateUIWithResult(audioData, videoData) {
   }
 
   if (videoData && videoData.success) {
-    videoUrl = videoData.video_url || "";
+    // Rewrite proxy URL để work với ingress
+    let vidUrl = videoData.video_url || "";
+    if (vidUrl.startsWith('/proxy')) {
+      vidUrl = BASE_URL + vidUrl;
+    }
+    videoUrl = vidUrl;
     if (!currentThumbnail) currentThumbnail = videoData.thumbnail;
     if (!displayTitle) displayTitle = videoData.title || "Không có tiêu đề";
     if (!displayArtist) displayArtist = videoData.artist || "Không xác định";
