@@ -361,12 +361,11 @@ def get_video_stream():
                 "success": True,
                 "title": info.get("title"),
                 "duration": info.get("duration"),
-                "stream_url": stream_url or video_url,
                 "video_url": video_url,
+                "is_live": is_live,
                 "thumbnail": f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg",
                 "artist": info.get("channel", ""),
             }
-        
             # Update global state
             playback_state["title"] = result["title"]
             playback_state["artist"] = result["artist"]
