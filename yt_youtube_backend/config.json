@@ -4,6 +4,7 @@
   "slug": "yt_youtube_backend",
   "description": "Self-hosted YouTube streaming backend using yt-dlp. Provides search, video/audio stream extraction, and proxy endpoints.",
   "repository": "https://github.com/minhquanghp86/yt-backend-addon",
+  "url": "https://github.com/minhquanghp86/yt-backend-addon",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
   "startup": "services",
   "boot": "auto",
