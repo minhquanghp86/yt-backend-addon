@@ -207,9 +207,17 @@ function getBaseUrl() {
 const BASE_URL = getBaseUrl();
 
 // Fetch API key từ backend khi page load
+function setStatus(text) {
+  document.getElementById('status').innerText = text;
+}
+
+// Fetch API key từ backend khi page load
 async function initConfig() {
   try {
     const resp = await fetch(`${BASE_URL}/config`);
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
     const data = await resp.json();
     API_KEY = data.api_key || "";
   } catch (e) {
@@ -218,10 +226,6 @@ async function initConfig() {
   }
 }
 initConfig();
-
-function setStatus(text) {
-  document.getElementById('status').innerText = text;
-}
 
 function updateUIWithResult(audioData, videoData) {
   let success = false;
