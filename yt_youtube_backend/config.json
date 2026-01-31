@@ -1,0 +1,23 @@
+{
+  "name": "YouTube Backend",
+  "version": "1.0.0",
+  "slug": "yt_youtube_backend",
+  "description": "Self-hosted YouTube streaming backend using yt-dlp. Provides search, video/audio stream extraction, and proxy endpoints.",
+  "image": "",
+  "ports": {
+    "5000/tcp": 5000
+  },
+  "environment": {
+    "API_KEY": "mqsmarthome",
+    "PORT": "5000"
+  },
+  "map": [],
+  "capabilities": [],
+  "privileged": false,
+  "init": true,
+  "log_level": "info",
+  "homeassistant_api": false,
+  "auth_api": false,
+  "ingress": true,
+  "ingress_port": 5000
+}
