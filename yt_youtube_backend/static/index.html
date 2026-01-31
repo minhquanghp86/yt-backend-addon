@@ -301,12 +301,6 @@ async function searchAll() {
     return;
   }
 
-  // CHECK: Nếu API_KEY vẫn rỗng nghĩa là fetch config fail
-  if (!API_KEY) {
-    setStatus("⚠️ Không thể kết nối backend. Thử reload trang.");
-    return;
-  }
-
   setStatus("Đang tìm kiếm...");
 
   // Reset players
