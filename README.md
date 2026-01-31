@@ -1,6 +1,6 @@
 # YouTube Backend — Home Assistant Add-on
 
-Self-hosted YouTube streaming backend using `yt-dlp`. Provides search, video/audio stream extraction, and proxy endpoints for use with Home Assistant or any HTTP client.
+Hệ thống máy chủ phát trực tuyến YouTube tự lưu trữ sử dụng yt-dlp. Cung cấp chức năng tìm kiếm, trích xuất luồng video/âm thanh và các điểm cuối proxy để sử dụng với Home Assistant hoặc bất kỳ máy khách HTTP nào.
 
 ---
 
@@ -15,13 +15,12 @@ Self-hosted YouTube streaming backend using `yt-dlp`. Provides search, video/aud
 
 **1. Thêm repository:**
 
-Vào Settings → Add-ons → Add-on Store → đclick ⋮ (menu) → Add Repository → paste URL:
+Vào Settings → Add-ons → Add-on Store → click ⋮ (menu) → Add Repository → paste URL:
 
 ```
-https://github.com/YOUR_USERNAME/yt-backend-addon
+https://github.com/minhquanghp86/yt-backend-addon
 ```
 
-> Thay `YOUR_USERNAME` bằng GitHub username của người maintain repo.
 
 **2. Install add-on:**
 
@@ -110,7 +109,7 @@ Proxy m3u8 playlist và rewrite URLs về `/proxy`. Được dùng cho live stre
 
 ---
 
-## Troubleshooting
+## Khắc phục sự cố
 
 **Add-on start nhưng không respond:**
 - Kiểm tra log trong UI của add-on. Thường gặp lỗi `yt-dlp` nếu YouTube thay đổi API.
