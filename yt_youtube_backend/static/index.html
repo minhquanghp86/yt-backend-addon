@@ -206,7 +206,6 @@ function getBaseUrl() {
 
 const BASE_URL = getBaseUrl();
 
-// Fetch API key từ backend khi page load
 function setStatus(text) {
   document.getElementById('status').innerText = text;
 }
@@ -222,7 +221,7 @@ async function initConfig() {
     API_KEY = data.api_key || "";
   } catch (e) {
     console.error("Không thể fetch config:", e);
-    setStatus("⚠️ Không thể connect đến backend");
+    // Không hiện warning ngay — chỉ hiện khi user search
   }
 }
 initConfig();
@@ -299,6 +298,12 @@ async function searchAll() {
   const query = document.getElementById('query').value.trim();
   if (!query) {
     setStatus("Vui lòng nhập từ khóa!");
+    return;
+  }
+
+  // CHECK: Nếu API_KEY vẫn rỗng nghĩa là fetch config fail
+  if (!API_KEY) {
+    setStatus("⚠️ Không thể kết nối backend. Thử reload trang.");
     return;
   }
 
