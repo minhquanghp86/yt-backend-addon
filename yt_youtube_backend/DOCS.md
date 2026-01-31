@@ -1,6 +1,6 @@
 # YouTube Backend Add-on
 
-Self-hosted YouTube streaming backend sử dụng `yt-dlp`. Cung cấp API để search, extract và proxy video/audio stream từ YouTube.
+Hệ thống máy chủ phát trực tuyến YouTube tự lưu trữ sử dụng yt-dlp. Cung cấp chức năng tìm kiếm, trích xuất luồng video/âm thanh và các điểm cuối proxy để sử dụng với Home Assistant hoặc bất kỳ máy khách HTTP nào.
 
 ---
 
@@ -9,7 +9,7 @@ Self-hosted YouTube streaming backend sử dụng `yt-dlp`. Cung cấp API để
 ### API_KEY
 - **Mặc định:** `mqsmarthome`
 - **Khuyến khích:** Đổi thành giá trị riêng của bạn
-- String bất kỳ để authenticate API requests
+- Chuỗi bất kỳ để authenticate API requests
 - Để trống nếu không muốn dùng authentication
 
 ### PORT
