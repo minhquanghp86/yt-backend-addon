@@ -10,6 +10,7 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY", "mqsmarthome")
 PORT = int(os.getenv("PORT", 5000))
+GO2RTC_URL = os.getenv("GO2RTC_URL", "http://localhost:1985")
 
 app = Flask(__name__, static_folder="static")
 
@@ -18,6 +19,17 @@ def auth(req):
     if not API_KEY:
         return True
     return req.headers.get("X-API-Key") == API_KEY
+
+
+# ======================
+# CONFIG ENDPOINT
+# ======================
+
+@app.route('/config', methods=['GET'])
+def get_config():
+    """Frontend gọi endpoint này để lấy API_KEY — không cần hardcode trong JS"""
+    return jsonify({"api_key": API_KEY})
+
 
 # ======================
 # PROXY ENDPOINTS
@@ -187,11 +199,15 @@ def proxy_m3u8():
 
 
 # ======================
-# SEARCH ENDPOINT
+# SEARCH ENDPOINT (legacy, giữ để backward compatible)
 # ======================
 
 @app.route('/search', methods=['POST'])
 def search_video():
+    """Legacy endpoint - trả về proxy URLs cho frontend"""
+    if not auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+        
     data = request.get_json(silent=True) or {}
     query = data.get("query", "").strip()
 
@@ -203,14 +219,14 @@ def search_video():
         "default_search": "ytsearch1",
         "skip_download": True,
         "noplaylist": True,
-        "format": "bestaudio/best",  # ưu tiên audio-only
+        "format": "bestaudio/best",
         "extractor_args": {
             "youtube": {
-                "player_client": ["web", "android", "ios", "web_creator"],  # thử nhiều client
-                "player_skip": ["js", "web"],  # skip một số parse để tránh fail
+                "player_client": ["web", "android", "ios", "web_creator"],
+                "player_skip": ["js", "web"],
             }
         },
-        "no_warnings": False,  # để thấy warning
+        "no_warnings": False,
     }
 
     try:
@@ -227,10 +243,8 @@ def search_video():
                 stream_url = f"/proxy?url={quote(url)}"
                 break
 
-        # Extract video - ưu tiên direct mp4 thay vì m3u8
+        # Extract video
         video_url = None
-        
-        # Tìm best video trực tiếp (không dùng m3u8)
         best_video = None
         best_height = 0
         
@@ -264,12 +278,12 @@ def search_video():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# ======================
-# GET VIDEO STREAM
-# ======================
-
 @app.route('/get_video_stream', methods=['POST'])
 def get_video_stream():
+    """Legacy endpoint - trả về proxy URLs cho frontend"""
+    if not auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+        
     data = request.get_json(silent=True) or {}
     query = data.get("query", "").strip()
 
@@ -281,7 +295,6 @@ def get_video_stream():
         "default_search": "ytsearch1",
         "skip_download": True,
         "noplaylist": True,
-        # Nâng lên 1080p
         "format": "best[ext=mp4][height<=1080]/best[height<=1080]/best",
         "live_from_start": True,
         "extractor_retries": 10,
@@ -297,8 +310,6 @@ def get_video_stream():
             is_live = info.get("is_live") or info.get("live_status") == "is_live"
 
             video_url = None
-            
-            # Tìm format có cả video VÀ audio
             best_format = None
             best_height = 0
             
@@ -308,23 +319,20 @@ def get_video_stream():
                 vcodec = f.get("vcodec", "none")
                 acodec = f.get("acodec", "none")
                 
-                # KIỂM TRA CẢ VIDEO VÀ AUDIO
                 if ("googlevideo.com" in url and 
                     vcodec != "none" and 
                     acodec != "none" and
                     not protocol.startswith("m3u8")):
                     
                     height = f.get("height", 0) or 0
-                    # Nâng giới hạn lên 1080p
                     if height <= 1080 and height > best_height:
                         best_height = height
                         best_format = f
             
             if best_format:
                 video_url = f"/proxy?url={quote(best_format['url'])}"
-                print(f"✓ Selected format: {best_format.get('format_id')} - {best_height}p - vcodec:{best_format.get('vcodec')} acodec:{best_format.get('acodec')}")
+                print(f"✓ Selected format: {best_format.get('format_id')} - {best_height}p")
 
-            # Fallback
             if not video_url and 'url' in info:
                 video_url = f"/proxy?url={quote(info['url'])}"
 
@@ -354,6 +362,230 @@ def get_video_stream():
 
 
 # ======================
+# CẢI TIẾN 3: ENDPOINT /PLAY - Trả về direct YouTube URLs
+# ======================
+
+@app.route('/play', methods=['POST'])
+def play_direct():
+    """
+    CẢI TIẾN 3: All-in-one endpoint
+    - Search YouTube
+    - Extract direct stream URLs (không qua proxy)
+    - Trả về URLs ready cho go2rtc pull trực tiếp
+    """
+    if not auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+    
+    data = request.get_json(silent=True) or {}
+    query = data.get("query", "").strip()
+
+    if not query:
+        return jsonify({"success": False, "error": "missing query"}), 400
+
+    print(f"[/play] Query: {query}")
+
+    ydl_opts = {
+        "quiet": True,
+        "default_search": "ytsearch1",
+        "skip_download": True,
+        "noplaylist": True,
+        "format": "best[ext=mp4][height<=1080]/best[height<=1080]/best",
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["web", "android", "ios"],
+            }
+        },
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+            if "entries" in info:
+                info = info["entries"][0]
+
+        # Extract best video URL (có audio)
+        video_url = None
+        audio_url = None
+        
+        for f in info.get("formats", []):
+            url = f.get("url", "")
+            vcodec = f.get("vcodec", "none")
+            acodec = f.get("acodec", "none")
+            
+            # Video có cả âm thanh
+            if vcodec != "none" and acodec != "none" and not video_url:
+                video_url = url
+            
+            # Audio only
+            if vcodec == "none" and acodec != "none" and not audio_url:
+                audio_url = url
+
+        if not video_url and not audio_url:
+            return jsonify({"success": False, "error": "no stream found"}), 200
+
+        # Fallback: nếu không có audio riêng, dùng video URL cho cả 2
+        if not audio_url:
+            audio_url = video_url
+
+        result = {
+            "success": True,
+            "title": info.get("title"),
+            "artist": info.get("channel", ""),
+            "thumbnail": f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg",
+            "duration": info.get("duration"),
+            # Direct URLs - go2rtc pull trực tiếp từ YouTube
+            "video_url": video_url,
+            "audio_url": audio_url,
+        }
+        
+        print(f"[/play] Found: {result['title']} by {result['artist']}")
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"[/play] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ======================
+# CẢI TIẾN 5: ENDPOINT /PLAY_ON_GO2RTC - Tích hợp go2rtc
+# ======================
+
+@app.route('/play_on_go2rtc', methods=['POST'])
+def play_on_go2rtc():
+    """
+    CẢI TIẾN 5: All-in-one endpoint với go2rtc integration
+    1. Search YouTube
+    2. Extract direct stream URLs
+    3. Tự động update go2rtc streams
+    4. Return metadata + stream endpoints
+    """
+    if not auth(request):
+        return jsonify({"error": "unauthorized"}), 401
+    
+    data = request.get_json(silent=True) or {}
+    query = data.get("query", "").strip()
+
+    if not query:
+        return jsonify({"success": False, "error": "missing query"}), 400
+
+    print(f"[play_on_go2rtc] Query: {query}")
+
+    # Step 1: Search YouTube
+    ydl_opts = {
+        "quiet": True,
+        "default_search": "ytsearch1",
+        "skip_download": True,
+        "noplaylist": True,
+        "format": "best[ext=mp4][height<=1080]/best[height<=1080]/best",
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["web", "android", "ios"],
+            }
+        },
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+            if "entries" in info:
+                info = info["entries"][0]
+
+        # Step 2: Extract URLs
+        video_url = None
+        audio_url = None
+        
+        for f in info.get("formats", []):
+            url = f.get("url", "")
+            vcodec = f.get("vcodec", "none")
+            acodec = f.get("acodec", "none")
+            
+            # Best video with audio
+            if vcodec != "none" and acodec != "none" and not video_url:
+                video_url = url
+            
+            # Best audio only
+            if vcodec == "none" and acodec != "none" and not audio_url:
+                audio_url = url
+
+        if not video_url and not audio_url:
+            return jsonify({"success": False, "error": "no stream found"}), 200
+
+        # Fallback
+        if not audio_url:
+            audio_url = video_url
+
+        metadata = {
+            "title": info.get("title", "Unknown"),
+            "artist": info.get("channel", "Unknown"),
+            "thumbnail": f"https://i.ytimg.com/vi/{info.get('id')}/hqdefault.jpg",
+            "duration": info.get("duration", 0),
+        }
+
+        print(f"[play_on_go2rtc] Found: {metadata['title']} by {metadata['artist']}")
+
+        # Step 3: Update go2rtc streams
+        try:
+            # Stream names
+            video_stream_name = "youtube_video"
+            audio_stream_name = "youtube_audio"
+            
+            # Update go2rtc config via API
+            go2rtc_payload = {
+                "streams": {
+                    video_stream_name: video_url,
+                    audio_stream_name: audio_url
+                }
+            }
+            
+            resp = requests.patch(
+                f"{GO2RTC_URL}/api/config",
+                json=go2rtc_payload,
+                timeout=10
+            )
+            
+            if resp.status_code not in [200, 201]:
+                print(f"[go2rtc] Update failed: {resp.status_code} {resp.text}")
+                return jsonify({
+                    "success": False,
+                    "error": f"go2rtc update failed: {resp.status_code}"
+                }), 500
+            else:
+                print(f"[go2rtc] Streams updated: {video_stream_name}, {audio_stream_name}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"[go2rtc] Connection error: {e}")
+            return jsonify({
+                "success": False,
+                "error": f"Cannot connect to go2rtc at {GO2RTC_URL}: {str(e)}"
+            }), 500
+
+        # Step 4: Return success với metadata + go2rtc stream URLs
+        return jsonify({
+            "success": True,
+            "metadata": metadata,
+            "streams": {
+                # MJPEG cho video (RemoteWebView)
+                "video_mjpeg": f"{GO2RTC_URL}/api/stream.mjpeg?src={video_stream_name}",
+                # MP3 cho audio (ESP media_player)
+                "audio_mp3": f"{GO2RTC_URL}/api/stream.mp3?src={audio_stream_name}",
+                # Bonus: HLS nếu cần
+                "video_hls": f"{GO2RTC_URL}/api/stream.m3u8?src={video_stream_name}",
+            },
+            "go2rtc_stream_names": {
+                "video": video_stream_name,
+                "audio": audio_stream_name
+            }
+        })
+
+    except yt_dlp.utils.DownloadError as de:
+        print(f"[yt-dlp] Error: {de}")
+        return jsonify({"success": False, "error": f"yt-dlp error: {str(de)}"}), 500
+    except Exception as e:
+        print(f"[play_on_go2rtc] Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ======================
 # Serve UI
 # ======================
 
@@ -363,6 +595,11 @@ def index():
 
 
 if __name__ == "__main__":
-    print(f"YT Audio Server running on 0.0.0.0:{PORT} with API_KEY={API_KEY}")
-    print("Proxy endpoints: /proxy and /proxy_m3u8")
-    app.run(host="0.0.0.0", port=PORT, threaded=True, debug=True)
+    print(f"YT Backend Server running on 0.0.0.0:{PORT}")
+    print(f"  API_KEY: {API_KEY}")
+    print(f"  go2rtc URL: {GO2RTC_URL}")
+    print("Endpoints:")
+    print("  Legacy: /search, /get_video_stream (proxy URLs)")
+    print("  New: /play (direct URLs)")
+    print("  Integrated: /play_on_go2rtc (auto update go2rtc)")
+    app.run(host="0.0.0.0", port=PORT, threaded=True, debug=False)
