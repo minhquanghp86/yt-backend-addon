@@ -546,27 +546,23 @@ def play_on_go2rtc():
                 "error": f"Cannot write URL files: {str(e)}"
             }), 500
 
-        # Step 4: Return success với metadata + go2rtc stream URLs
+        # Step 4: Return success với metadata và URLs đơn giản
         video_stream_name = "youtube_video"
-        audio_stream_name = "youtube_audio"
+        
+        # Lấy host từ request hoặc dùng localhost
+        backend_host = request.host_url.rstrip('/')  # http://IP:5000
         
         return jsonify({
             "success": True,
             "metadata": metadata,
-            "streams": {
-                # go2rtc stream URLs - đã config sẵn trong go2rtc.yaml
-                "video_mjpeg": f"{GO2RTC_URL}/api/stream.mjpeg?src={video_stream_name}",
-                "audio_mp3": f"{GO2RTC_URL}/api/stream.mp3?src={audio_stream_name}",
-                "video_hls": f"{GO2RTC_URL}/api/stream.m3u8?src={video_stream_name}",
-            },
-            # Legacy field cho ESPHome - audio URL proxy qua backend
-            "stream_url": f"/proxy?url={quote(audio_url)}",
-            "direct_audio_url": audio_url,  # Direct YouTube URL nếu cần
-            "go2rtc_stream_names": {
-                "video": video_stream_name,
-                "audio": audio_stream_name
-            },
-            "note": "URLs written to /config/youtube_url.txt and /config/youtube_audio_url.txt"
+            # Stream URLs cho ESPHome và RemoteWebView
+            "stream_url": f"{backend_host}/proxy?url={quote(audio_url)}",
+            "video_url": f"{GO2RTC_URL}/api/stream.mjpeg?src={video_stream_name}",
+            # Thông tin bổ sung
+            "title": metadata["title"],
+            "artist": metadata["artist"],
+            "thumbnail": metadata["thumbnail"],
+            "duration": metadata["duration"]
         })
 
     except yt_dlp.utils.DownloadError as de:
