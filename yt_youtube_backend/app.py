@@ -10,7 +10,7 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY", "mqsmarthome")
 PORT = int(os.getenv("PORT", 5000))
-GO2RTC_URL = os.getenv("GO2RTC_URL", "http://192.168.10.2:1985")
+GO2RTC_URL = os.getenv("GO2RTC_URL", "http://localhost:1985")
 
 app = Flask(__name__, static_folder="static")
 
@@ -523,58 +523,47 @@ def play_on_go2rtc():
 
         print(f"[play_on_go2rtc] Found: {metadata['title']} by {metadata['artist']}")
 
-        # Step 3: Update go2rtc streams
+        # Step 3: Ghi URLs vào file cho go2rtc đọc
         try:
-            # Stream names
-            video_stream_name = "youtube_video"
-            audio_stream_name = "youtube_audio"
+            # File paths - go2rtc sẽ đọc từ đây qua exec command
+            video_url_file = "/config/youtube_url.txt"
+            audio_url_file = "/config/youtube_audio_url.txt"
             
-            # Update go2rtc config via API
-            go2rtc_payload = {
-                "streams": {
-                    video_stream_name: video_url,
-                    audio_stream_name: audio_url
-                }
-            }
+            # Ghi video URL
+            with open(video_url_file, 'w') as f:
+                f.write(video_url)
+            print(f"[play_on_go2rtc] Written video URL to {video_url_file}")
             
-            resp = requests.patch(
-                f"{GO2RTC_URL}/api/config",
-                json=go2rtc_payload,
-                timeout=10
-            )
+            # Ghi audio URL
+            with open(audio_url_file, 'w') as f:
+                f.write(audio_url)
+            print(f"[play_on_go2rtc] Written audio URL to {audio_url_file}")
             
-            if resp.status_code not in [200, 201]:
-                print(f"[go2rtc] Update failed: {resp.status_code} {resp.text}")
-                return jsonify({
-                    "success": False,
-                    "error": f"go2rtc update failed: {resp.status_code}"
-                }), 500
-            else:
-                print(f"[go2rtc] Streams updated: {video_stream_name}, {audio_stream_name}")
-
-        except requests.exceptions.RequestException as e:
-            print(f"[go2rtc] Connection error: {e}")
+        except Exception as e:
+            print(f"[play_on_go2rtc] File write error: {e}")
             return jsonify({
                 "success": False,
-                "error": f"Cannot connect to go2rtc at {GO2RTC_URL}: {str(e)}"
+                "error": f"Cannot write URL files: {str(e)}"
             }), 500
 
         # Step 4: Return success với metadata + go2rtc stream URLs
+        video_stream_name = "youtube_video"
+        audio_stream_name = "youtube_audio"
+        
         return jsonify({
             "success": True,
             "metadata": metadata,
             "streams": {
-                # MJPEG cho video (RemoteWebView)
+                # go2rtc stream URLs - đã config sẵn trong go2rtc.yaml
                 "video_mjpeg": f"{GO2RTC_URL}/api/stream.mjpeg?src={video_stream_name}",
-                # MP3 cho audio (ESP media_player)
                 "audio_mp3": f"{GO2RTC_URL}/api/stream.mp3?src={audio_stream_name}",
-                # Bonus: HLS nếu cần
                 "video_hls": f"{GO2RTC_URL}/api/stream.m3u8?src={video_stream_name}",
             },
             "go2rtc_stream_names": {
                 "video": video_stream_name,
                 "audio": audio_stream_name
-            }
+            },
+            "note": "URLs written to /config/youtube_url.txt and /config/youtube_audio_url.txt"
         })
 
     except yt_dlp.utils.DownloadError as de:
