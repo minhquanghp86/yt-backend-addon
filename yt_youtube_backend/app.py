@@ -10,7 +10,7 @@ load_dotenv()
 
 API_KEY = os.getenv("API_KEY", "mqsmarthome")
 PORT = int(os.getenv("PORT", 5000))
-GO2RTC_URL = os.getenv("GO2RTC_URL", "http://localhost:1985")
+GO2RTC_URL = os.getenv("GO2RTC_URL", "http://a889bffc-go2rtc:1985")
 
 app = Flask(__name__, static_folder="static")
 
