@@ -1,6 +1,6 @@
 {
   "name": "YouTube Backend",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "slug": "yt_youtube_backend",
   "description": "Backend YouTube tự host sử dụng yt-dlp. Cung cấp tìm kiếm, trích xuất video/audio stream và proxy endpoints.",
   "repository": "https://github.com/minhquanghp86/yt-backend-addon",
@@ -12,10 +12,13 @@
   "ports": {
     "5000/tcp": 5000
   },
+  "map": [
+    "config:rw"
+  ],
   "options": {
     "API_KEY": "mqsmarthome",
     "PORT": 5000,
-    "GO2RTC_URL": "http://a889bffc-go2rtc:1985"
+    "GO2RTC_URL": "http://192.168.10.2:1985"
   },
   "schema": {
     "API_KEY": "str",
