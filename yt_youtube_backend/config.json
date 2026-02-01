@@ -18,7 +18,7 @@
   "options": {
     "API_KEY": "mqsmarthome",
     "PORT": 5000,
-    "GO2RTC_URL": "http://192.168.10.2:1985"
+    "GO2RTC_URL": "http://localhost:1985"
   },
   "schema": {
     "API_KEY": "str",
