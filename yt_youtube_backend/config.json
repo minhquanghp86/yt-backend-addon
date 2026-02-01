@@ -1,6 +1,6 @@
 {
   "name": "YouTube Backend",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "slug": "yt_youtube_backend",
   "description": "Backend YouTube tự host sử dụng yt-dlp. Cung cấp tìm kiếm, trích xuất video/audio stream và proxy endpoints.",
   "repository": "https://github.com/minhquanghp86/yt-backend-addon",
