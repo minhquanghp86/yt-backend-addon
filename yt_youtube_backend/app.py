@@ -559,6 +559,9 @@ def play_on_go2rtc():
                 "audio_mp3": f"{GO2RTC_URL}/api/stream.mp3?src={audio_stream_name}",
                 "video_hls": f"{GO2RTC_URL}/api/stream.m3u8?src={video_stream_name}",
             },
+            # Legacy field cho ESPHome - audio URL proxy qua backend
+            "stream_url": f"/proxy?url={quote(audio_url)}",
+            "direct_audio_url": audio_url,  # Direct YouTube URL nếu cần
             "go2rtc_stream_names": {
                 "video": video_stream_name,
                 "audio": audio_stream_name
