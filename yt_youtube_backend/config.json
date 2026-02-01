@@ -1,8 +1,8 @@
 {
   "name": "YouTube Backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "slug": "yt_youtube_backend",
-  "description": "Hệ thống máy chủ phát trực tuyến YouTube tự lưu trữ sử dụng yt-dlp. Cung cấp chức năng tìm kiếm, trích xuất luồng video/âm thanh và các điểm cuối proxy để sử dụng với Home Assistant hoặc bất kỳ máy khách HTTP nào.",
+  "description": "Backend YouTube tự host sử dụng yt-dlp. Cung cấp tìm kiếm, trích xuất video/audio stream và proxy endpoints.",
   "repository": "https://github.com/minhquanghp86/yt-backend-addon",
   "url": "https://github.com/minhquanghp86/yt-backend-addon",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
@@ -15,11 +15,11 @@
   "options": {
     "API_KEY": "mqsmarthome",
     "PORT": 5000,
-    "GO2RTC_URL": "http://homeassistant.local:1984"
+    "GO2RTC_URL": "http://localhost:1985"
   },
   "schema": {
     "API_KEY": "str",
-   "PORT": "int",
+    "PORT": "int",
     "GO2RTC_URL": "str"
   },
   "ingress": true,
